@@ -236,7 +236,7 @@ allowed to.** (Don't "reject" media — sanitize: decode-in-isolation + transcod
   (`threshold_seal` ciphertext-anywhere — no node holds enough to read anything).
 - **3 HSM'd nodes (Toronto / London / Tokyo)** for the **most important secrets** (LK/epoch-witness,
   global-anchor signing, recovery/OPRF key shards), jurisdiction-sharded (**anti-collusion**: must
-  break multiple jurisdictions at once). Matches the patent's jurisdiction-sharded HSM model.
+  break multiple jurisdictions at once). Uses a jurisdiction-sharded HSM model.
 - **HONEST GAP — the distributed-systems layer is the big net-new build:** encryption gives
   *confidentiality* on untrusted nodes (solved). It does **not** give availability/durability
   (replication + erasure coding), integrity (proofs-of-retrievability), retrieval (DHT/addressing), or
@@ -249,7 +249,7 @@ allowed to.** (Don't "reject" media — sanitize: decode-in-isolation + transcod
 ## 9. Data / AI economy & tokens (from the provisional, roadmap-honest)
 
 - **Base "mining" = Proof of Living Entropy (PoLE)** — not work, not stake. Resource = living
-  (human/environmental) entropy; distribution = all living participants (patent p490/p503).
+  (human/environmental) entropy; distribution = all living participants.
 - **Two-tier issuance:** **UBI floor** (80% of validated PoLE emissions → global pool, cost-of-living
   indexed) + **Variable Rewards** (verified participation/improvement/stewardship). Harmful activities
   ineligible by rule.

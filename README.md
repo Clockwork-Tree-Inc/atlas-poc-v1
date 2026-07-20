@@ -98,7 +98,7 @@ The classical (not-yet-PQ) residue is narrow: the anonymous credential's *same-c
 unlinkability and the discrete-log range-proof *soundness*, with a **STARK migration path** for the
 latter. **Not built (designed):** on-network governance, the AI tiers, and the **space *tier***
 (satellites — distinct from Spaces). The **economy/token** is designed and its capabilities described,
-but the implementation is **not included here** (it is on the patent track).
+but the implementation is **not included here**.
 
 ## Docs
 
