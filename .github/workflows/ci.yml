@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-python:
+    name: Backend (Python, ${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.install_ursa }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: pure-python
+            install_ursa: false
+          - backend: native-ursa
+            install_ursa: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install declared (pure-Python) dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: (native path) install Ursa BBS+ accelerator
+        if: ${{ matrix.install_ursa }}
+        run: pip install "ursa-bbs-signatures>=1.0"
+
+      - name: Report which credential backend is active
+        working-directory: backend
+        run: |
+          python -c "import atlas.realid.verification as v; print('_BBS_AVAILABLE =', v._BBS_AVAILABLE)"
+
+      - name: Run backend test suite
+        working-directory: backend
+        run: pytest
+
+  swift-core:
+    name: Swift core + parity (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift toolchain version
+        run: swift --version
+
+      - name: Clean stale build artifacts
+        working-directory: ios/AtlasCore
+        run: rm -rf .build
+
+      - name: Run Swift tests
+        working-directory: ios/AtlasCore
+        run: swift test
