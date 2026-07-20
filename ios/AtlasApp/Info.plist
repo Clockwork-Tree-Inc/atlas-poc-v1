@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Usage strings + capabilities for the Atlas PoC app target (§1.2, §6, §8). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- R10 BLE capture runs on the phone (§1.2). -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Atlas connects to your Colmi R10 ring to read live heart-rate and motion for the liveness gate. Raw data is encrypted on this device and never leaves it.</string>
+
+    <!-- Enrolment biometric anchors + direct-capture provenance (§6, §8). -->
+    <key>NSCameraUsageDescription</key>
+    <string>Atlas captures depth-checked, provenanced photos and your enrolment face/depth anchor. Capture happens inside the attested app flow.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Atlas uses Face ID to gate the Secure Enclave authority and the in-person enrolment ritual.</string>
+
+    <!-- Ambient PoC: the phone's mic + motion FUSE into a live TIMING/GATING signal
+         standing in for the ring. Sensor data times draws and gates the ratchet;
+         it is NEVER folded into a key (value = clean QRNG). -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Atlas fuses ambient sound level (loudness only, not recorded) into a live timing signal that schedules cryptographic draws. Audio is never stored and never enters a key.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Atlas fuses accelerometer, gyroscope, magnetometer and barometer motion into a live timing/gating signal. Motion data times draws and gates the ratchet; it never enters a key.</string>
+
+    <!-- Two-phone run: the app talks to the Mac blind-relay node over the LAN. -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Atlas connects to the Mac node on the local network for the two-phone run.</string>
+    <!-- The Mac node is plain http on the LAN; allow local (RFC1918/.local) HTTP only.
+         This does NOT disable ATS for arbitrary internet hosts. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+
+    <!-- Background BLE so the ring stream survives backgrounding during a session. -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>bluetooth-central</string>
+    </array>
+
+    <key>UILaunchScreen</key>
+    <dict/>
+</dict>
+</plist>

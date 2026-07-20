@@ -1,0 +1,11 @@
+# Atlas PoC — Mac tunnel-backend node ONLY (the phone↔Mac PQC server).
+#
+# This is the minimal set to run `python -m atlas.net.tunnel_backend`. It omits
+# the heavy native BBS+ engine (ursa-bbs-signatures) — the tunnel does not need
+# it — so this installs cleanly on macOS (Apple silicon) with prebuilt wheels and
+# no C/Rust toolchain. For the FULL test suite use requirements.txt instead.
+
+cryptography>=44.0.1     # X25519, AES-256-GCM, HKDF, SHA-3
+kyber-py>=1.0            # ML-KEM-768 (pure Python)
+dilithium-py>=1.0        # ML-DSA-65 (pure Python)
+pyspx>=0.5.0             # SPHINCS+ / SLH-DSA (prebuilt wheel)

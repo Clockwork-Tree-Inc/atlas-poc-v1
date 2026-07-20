@@ -1,0 +1,16 @@
+# Atlas PoC — backend / protocol core (Milestone 1)
+# All dependencies are pure-Python or ship prebuilt wheels, so the core builds
+# and tests offline in CI without a C toolchain or network access to GitHub.
+
+cryptography>=44.0.1     # X25519, Ed25519, AES-256-GCM, HKDF, SHA-2/3 (>=44.0.1: CVE fixes)
+kyber-py>=1.0            # ML-KEM-768 (pure Python reference)
+dilithium-py>=1.0        # ML-DSA-65 (pure Python reference)
+pyspx>=0.5.0             # SPHINCS+ / SLH-DSA (prebuilt wheel)
+py-ecc>=6.0              # BLS12-381 pairing — pure-Python Pointcheval-Sanders anonymous credential (ps_credential.py)
+requests>=2.28          # drand HTTP client (used on the Mac; offline beacon needs no network)
+pytest>=7.0
+
+# OPTIONAL native accelerator (NOT installed by default — it breaks `pip install` on
+# Apple Silicon / toolchain-less CI, which is why it's not a hard requirement):
+#   ursa-bbs-signatures>=1.0   # Hyperledger Ursa BBS+ (archived 2022). If present,
+#   verification.py uses it instead of the pure-Python PS backend. See REALID_MODULE.md.
