@@ -102,6 +102,10 @@ but the implementation is **not included here**.
 
 ## Docs
 
+- [`SPEC.md`](SPEC.md) — the **protocol specification** (skeleton, v0.1): notation,
+  threat model, the identity tree, key schedule + ratchet, liveness gate, presence
+  unwrap, recognition tunnel, authenticator, unlinkability — written to be **attacked**
+  (see its §12 "What to attack"). Generated from and verified against the running code.
 - [`VISION.md`](VISION.md) — the thesis (**the soul-bound entity**) and the horizons:
   today's proof, 5 / 20 / 100 years — the nearer the horizon, the more provable the claim.
 - [`GOVERNANCE.md`](GOVERNANCE.md) — how Atlas is owned, funded, and kept a public good:
