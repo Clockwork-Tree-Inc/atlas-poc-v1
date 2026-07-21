@@ -114,8 +114,11 @@ def serve(host: str = "0.0.0.0", port: int = 8787) -> None:
             self.wfile.write(blob)
 
         def _body(self) -> dict:
-            n = int(self.headers.get("Content-Length", 0))
-            if n == 0:
+            # A malformed Content-Length or non-JSON body must not crash the
+            # handler with an unhandled exception (which drops the connection
+            # with no response — a scanner or flaky client would trigger it).
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            if n <= 0:
                 return {}
             return json.loads(self.rfile.read(n) or b"{}")
 
@@ -124,7 +127,12 @@ def serve(host: str = "0.0.0.0", port: int = 8787) -> None:
             self._send(code, obj)
 
         def do_POST(self):  # noqa: N802
-            code, obj = backend.dispatch("POST", self.path, self._body())
+            try:
+                body = self._body()
+            except ValueError:  # bad Content-Length or invalid JSON
+                self._send(400, {"error": "invalid JSON body"})
+                return
+            code, obj = backend.dispatch("POST", self.path, body)
             self._send(code, obj)
 
         def log_message(self, *_args):  # quiet

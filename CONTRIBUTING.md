@@ -16,6 +16,28 @@ Apache ICLA, unmodified except for the recipient's name.
 > A CLA-signing check will be enabled on pull requests; until then, opening a PR is taken as your
 > agreement to the terms in `CLA.md`.
 
+## The deal you're signing into (reciprocity)
+
+We don't want the CLA to be one-directional. Here is the structure your contribution
+becomes part of — stated plainly *before* you sign, and set out in full in
+[`GOVERNANCE.md`](GOVERNANCE.md):
+
+- **The core protocol stays a public good.** Clockwork Tree has committed to granting
+  a nonprofit foundation a free, irrevocable, perpetual license over the core — so it
+  can never be closed or made pay-to-use, whatever happens to the company. AGPL-3.0
+  (and its §11 patent grant) already guarantee the released code stays open.
+- **The company is bound to fund the commons**, from a defined share of commercial
+  revenue — so the foundation is resourced, not merely permitted.
+- **Contributors become members of that commons**, with a governance voice and a share
+  of the returns their work creates — through grants, bounties, and paid roles.
+  **Proven contributors are considered first for paid roles.** Returns are fiat,
+  grants, and employment — **never tokens**.
+
+These are public commitments on the record, not yet-executed instruments; when the
+foundation exists the binding documents are executed and linked from `GOVERNANCE.md`.
+The point is that you sign the CLA knowing the company is tying its own hands, not
+just asking you to grant rights.
+
 ## How to contribute
 
 - **Discuss first** for anything non-trivial — open an issue before a large PR.

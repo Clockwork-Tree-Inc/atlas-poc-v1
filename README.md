@@ -102,6 +102,11 @@ but the implementation is **not included here**.
 
 ## Docs
 
+- [`VISION.md`](VISION.md) — the thesis (**the soul-bound entity**) and the horizons:
+  today's proof, 5 / 20 / 100 years — the nearer the horizon, the more provable the claim.
+- [`GOVERNANCE.md`](GOVERNANCE.md) — how Atlas is owned, funded, and kept a public good:
+  company holds the IP; a nonprofit foundation gets a free irrevocable license + a share of
+  revenue; contributors join the commons. Marks what's **in force** vs. **committed**.
 - [`CAPABILITIES.md`](CAPABILITIES.md) — **every capability** of the system, grouped by layer
   and tagged by maturity (built + tested / built / sim / device-gated / designed / vision).
 - [`APPLICATIONS.md`](APPLICATIONS.md) — **what the capabilities unlock**, by domain, each
@@ -134,7 +139,7 @@ but the implementation is **not included here**.
 ```bash
 cd backend
 pip install -r requirements.txt      # pure-Python by default (Ursa BBS+ is optional)
-python -m pytest -q                  # 362 tests
+python -m pytest -q                  # 637 tests
 python -m demos.demo_milestone1_text
 
 # Swift core (macOS):  cd ios/AtlasCore && swift test

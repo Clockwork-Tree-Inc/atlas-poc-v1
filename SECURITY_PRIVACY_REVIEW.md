@@ -191,6 +191,14 @@ software, the device-key root stays hardware-gated).
   production tracks a maintained successor (DIF `bbs`/`anoncreds-rs`). Already
   flagged. **Medium (supply-chain).**
 - Transitive dep CVEs via `requests` (urllib3/idna) — Mac path only. **Low.**
+- Mac-node HTTP servers (`net/node_server.py`, `net/tunnel_backend.py`) default to
+  binding `0.0.0.0` (all interfaces) and expose unauthenticated POST endpoints — a
+  deliberate default so a phone can reach the Mac over the LAN, but it means any host
+  on the network can reach the relay/verifier. Fine for a trusted LAN demo; **before
+  any public/internet exposure**, add auth + rate-limiting and bind to a specific
+  interface behind a reverse proxy. Malformed request bodies now fail closed with a
+  `400` (previously dropped the connection). **Low (by-design bind; hardening gated on
+  deployment).** **Medium** if ever exposed to an untrusted network as-is.
 
 ## Confirmed SOUND
 
