@@ -62,6 +62,26 @@ This is a recognized structure — Signal (Foundation over Messenger LLC), Mozil
 on the commons), Godot (Foundation alongside a commercial arm). Atlas applies it
 with a patent held in the trunk and pledged to the commons.
 
+## What it will take — and how to help
+
+Plainly: the gap between *Committed* and *In force* is not intent — it is
+**resources and people.** Standing up an independent foundation, executing the
+license and revenue covenant, and formalizing the patent pledge take counsel,
+funding, and hands to do right. **The open license is not waiting on any of that** —
+AGPL-3.0 is live and irrevocable today, unconditionally; resources buy the
+*additional* structure that makes the commons self-sustaining, not the openness
+itself.
+
+The intended shape (legal forms to be finalized with counsel) is two bodies: a
+**public-benefit corporation** that builds and sells the applications, hardware, and
+integrations — and pays the people who do the work — and a **separate,
+independently-governed, funded not-for-profit**, resourced by the company's revenue
+covenant and by outside funders, that holds the commons license and stewards the
+protocol so it survives the company. We are actively seeking the funding,
+contributors, and partners to close that gap and move each commitment above from
+*Committed* to *In force*. If that is a future you want to build,
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is where to start.
+
 ## Status of this document
 
 This is a **charter of intent**, not the operating agreement of a foundation that
