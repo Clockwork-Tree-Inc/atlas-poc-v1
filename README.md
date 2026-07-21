@@ -118,6 +118,9 @@ but the implementation is **not included here**.
   (Python ↔ Swift); regenerate with `python -m tools.gen_parity_vectors`.
 - [`HARDWARE_TESTING.md`](HARDWARE_TESTING.md) — the hardware/red-team runbook with a
   measurable pass/fail for each real-world seam sim can't prove.
+- [`HARDWARE_RESULTS.md`](HARDWARE_RESULTS.md) — the **lab notebook**: real-device runs
+  performed so far (n=2 users, two iPhones, two Colmi R10 rings — live signals, not
+  synthetic), what they establish and don't, and the queued next live tests.
 - [`REALID_MODULE.md`](REALID_MODULE.md) — identity / real-ID binding / unlinkability /
   duress (test data only); see also [`THREAT_COVERAGE.md`](THREAT_COVERAGE.md).
 - [`CREDENTIAL_PQC_POSTURE.md`](CREDENTIAL_PQC_POSTURE.md) — the credential posture:

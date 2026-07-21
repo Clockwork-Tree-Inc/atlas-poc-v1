@@ -289,6 +289,9 @@ needs population.
 
 ## Results table (fill in on the kit)
 
+Runs performed so far are logged in [`HARDWARE_RESULTS.md`](HARDWARE_RESULTS.md);
+append a row here as each seam gets a measured result.
+
 | Seam | PASS threshold | Result | Notes |
 |------|----------------|--------|-------|
 | (a) Swift compile + parity | parity 100 % | | |
