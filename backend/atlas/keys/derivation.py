@@ -26,7 +26,9 @@ the containment tests assert a destroyed key cannot decrypt.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import Iterator
 
 from ..crypto.primitives import H, hkdf_combine
 from ..params import (
@@ -50,14 +52,54 @@ class KeyDestroyedError(RuntimeError):
 
 @dataclass
 class SessionKey:
-    """RAM-only session key material (§2.2). Never written to storage."""
+    """RAM-only session key material (§2.2). Never written to storage.
+
+    KEY LIFETIME (§2.2 containment). `destroy()` zeroises the ONE buffer this
+    object owns. It cannot reach a copy someone else already took, so the
+    containment guarantee is only ever as strong as the copies that were never
+    made. Prefer `borrow()` (no copy) over `.key` (escaping copy) everywhere a
+    caller does not need to RETAIN the bytes past the call.
+
+    HONEST BOUNDARY — what CPython cannot guarantee (stated exactly, cf. the
+    Swift `SessionKey`, which can and does do better):
+      * `bytes` is immutable, so any copy handed out — via `.key` — is
+        unreachable by the wipe and lives until the GC frees it. Freed memory is
+        not zeroised.
+      * The interpreter may itself copy the buffer (realloc, refcount churn),
+        leaving stale plaintext behind us.
+      * Nothing is pinned, so the page may reach swap or a core dump.
+    Treat Python-side zeroisation as BEST EFFORT for the reference
+    implementation. The forensic-resistance claim ("RAM holds no key once
+    liveness breaks") rests on the device implementations, where the buffer is
+    explicitly allocated, wiped through `memset_s`, and freed on `deinit`.
+    """
 
     drand_round: bytes
     _key: bytearray = field(repr=False)
     _alive: bool = True
 
+    @contextmanager
+    def borrow(self) -> Iterator[memoryview]:
+        """Borrow the key material WITHOUT minting a copy the wipe cannot reach.
+
+        Yields a read-only `memoryview` over the live buffer — valid only inside
+        the `with` block. Do NOT stash it; `destroy()` zeroises underneath it by
+        design (item assignment stays legal while a view is exported)."""
+        if not self._alive:
+            raise KeyDestroyedError("session key was destroyed (liveness/epoch)")
+        view = memoryview(self._key).toreadonly()
+        try:
+            yield view
+        finally:
+            view.release()
+
     @property
     def key(self) -> bytes:
+        """ESCAPING COPY — the returned `bytes` outlives `destroy()`.
+
+        Kept for the callers that legitimately RETAIN key bytes (the ratchet
+        chain feeds `prev_key` forward, see `session/device.py`). Everything
+        else should use `borrow()`."""
         if not self._alive:
             raise KeyDestroyedError("session key was destroyed (liveness/epoch)")
         return bytes(self._key)
@@ -66,13 +108,23 @@ class SessionKey:
         """Derive a purpose-scoped key (§2.3 HKDF info label per purpose)."""
         if context not in _CONTEXTS:
             raise ValueError(f"unknown context {context!r}")
-        return hkdf_combine([self.key], info=_CONTEXTS[context], length=32)
+        with self.borrow() as k:                      # no escaping copy of the root key
+            return hkdf_combine([k], info=_CONTEXTS[context], length=32)
 
     def destroy(self) -> None:
-        """Zeroise the key (the primary containment mechanism, §2.2)."""
+        """Zeroise the key (the primary containment mechanism, §2.2). Idempotent."""
         for i in range(len(self._key)):
             self._key[i] = 0
         self._alive = False
+
+    def __del__(self) -> None:
+        # A key that is dropped without an explicit destroy() must not leave
+        # plaintext behind for the allocator to hand out. Interpreter shutdown
+        # can null out globals under us, so this is deliberately total.
+        try:
+            self.destroy()
+        except Exception:
+            pass
 
     @property
     def alive(self) -> bool:

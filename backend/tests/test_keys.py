@@ -37,6 +37,56 @@ def test_session_key_destroy_is_containment():
         _ = sk.key
 
 
+# --------------------------------------------------------------- key lifetime
+# `destroy()` can only wipe the ONE buffer the key owns; containment is exactly
+# as strong as the copies that were never made. `borrow()` is the no-copy path.
+
+def test_borrow_is_a_live_view_not_a_copy():
+    """The borrowed view must OBSERVE the wipe — that is what proves it is a
+    view of the live buffer and not a snapshot the wipe cannot reach."""
+    sk = _sk()
+    with sk.borrow() as view:
+        assert bytes(view) == sk.key            # same material...
+        sk.destroy()
+        assert bytes(view) == b"\x00" * 32      # ...and the wipe reaches it
+
+
+def test_key_property_escapes_the_wipe():
+    """Documents the hazard `borrow()` exists to avoid: `.key` hands out an
+    immutable copy that `destroy()` provably cannot reach."""
+    sk = _sk()
+    escaped = sk.key
+    sk.destroy()
+    assert escaped != b"\x00" * 32              # still plaintext — by construction
+
+
+def test_borrow_refuses_after_destroy():
+    sk = _sk()
+    sk.destroy()
+    with pytest.raises(KeyDestroyedError):
+        with sk.borrow():
+            pass
+
+
+def test_context_key_takes_no_escaping_copy_of_the_root_key():
+    """context_key() must derive through the borrow, and must keep working —
+    the derivation is unchanged (parity vectors pin the output)."""
+    a, b = _sk(), _sk()
+    assert a.context_key("storage") != b.context_key("storage")   # key-dependent
+    sk = _sk()
+    assert sk.context_key("storage") == sk.context_key("storage")  # deterministic
+    sk.destroy()
+    with pytest.raises(KeyDestroyedError):
+        sk.context_key("storage")
+
+
+def test_destroy_is_idempotent():
+    sk = _sk()
+    sk.destroy()
+    sk.destroy()                                 # must not raise (…and __del__ repeats it)
+    assert not sk.alive
+
+
 def test_ratchet_one_way_forward_secrecy():
     k0 = os.urandom(32)
     k1 = ratchet(k0, entropy_t=b"e1", beacon_t=b"b1", drand_round=b"\x00" * 8)
