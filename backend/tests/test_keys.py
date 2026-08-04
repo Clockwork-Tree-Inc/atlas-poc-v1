@@ -10,6 +10,7 @@ from atlas.keys import recovery as R
 from atlas.keys import tokens as T
 from atlas.keys.derivation import (
     KeyDestroyedError,
+    SecretBytes,
     derive_session_key_decoupled,
     ratchet,
 )
@@ -78,6 +79,17 @@ def test_context_key_takes_no_escaping_copy_of_the_root_key():
     sk.destroy()
     with pytest.raises(KeyDestroyedError):
         sk.context_key("storage")
+
+
+def test_secret_bytes_wipes_in_place_not_by_rebinding():
+    """The buffer identity must never change — a rebind would drop the old
+    allocation intact, which is exactly the failure SecretBytes exists to stop."""
+    sb = SecretBytes()
+    sb.set_from(os.urandom(32))
+    with sb.borrow() as view:
+        assert bytes(view) != b"\x00" * 32
+        sb.wipe()
+        assert bytes(view) == b"\x00" * 32     # same buffer, wiped underneath
 
 
 def test_destroy_is_idempotent():

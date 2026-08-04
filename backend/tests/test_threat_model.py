@@ -181,7 +181,9 @@ def test_T19_stolen_device_keys_are_ephemeral():
     A.attestation.mark_suspicious()                   # seizure -> wipe
     with pytest.raises(Exception):
         _ = A.session.key
-    assert A._prev_session_bytes == b"\x00" * 32
+    with A._prev_session_bytes.borrow() as prev:
+        assert bytes(prev) == b"\x00" * 32          # wiped in place, not rebound
+    assert A._continuity_key is None
 
 
 # T-25 — Post-quantum harvest-now-decrypt-later. Built: hybrid PQC KEM

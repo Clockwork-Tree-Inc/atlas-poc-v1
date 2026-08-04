@@ -264,4 +264,20 @@ def test_containment_session_inert_after_liveness_break():
     with pytest.raises(Exception):
         _ = A.session.key
     # and no session-derived copy survives in RAM (ratchet prev-key wiped too)
-    assert A._prev_session_bytes == b"\x00" * 32
+    with A._prev_session_bytes.borrow() as prev:
+        assert bytes(prev) == b"\x00" * 32
+    assert A._continuity_key is None
+
+
+def test_containment_wipes_in_place_so_a_retained_reference_sees_zeros():
+    """Seizure model: an attacker who already holds a reference to the device's
+    key buffers must find them zeroed, not merely detached. Rebinding the field
+    would leave the old allocation intact and readable."""
+    A, _ = _pair()
+    A.advance_epoch_present(lk=b"L" * 32, epoch_key=b"E" * 32, drand_round=b"\x00" * 8)
+    held = A._prev_session_bytes                     # attacker's reference
+    with held.borrow() as v:
+        assert bytes(v) != b"\x00" * 32              # real key material
+    A.attestation.mark_suspicious()                  # seizure -> containment fires
+    with held.borrow() as v:
+        assert bytes(v) == b"\x00" * 32              # SAME object, wiped in place

@@ -43,12 +43,12 @@ public final class Device {
 
     private let deviceKeypair: HybridSign.Keypair
     private var session: SessionKey?
-    private var prevSessionBytes = Data(repeating: 0, count: 32)
+    private let prevSessionBytes = SecretBytes()
 
     // Independent local continuity-ratchet clock (~10s ± jitter, §5.3) and the
     // rolling continuity-chain key it advances.
     private let ratchetClock: RatchetClock
-    private var continuityKey: Data?
+    private var continuityKey: SecretBytes?
 
     // Presence enrollment (§2.3 / FIX #7): a shared enrollment secret sealed in the
     // device Secure Enclave, released only on live enrolled presence. The server
@@ -77,7 +77,6 @@ public final class Device {
         self.tunnelKey = bootstrapTunnelKey ?? Primitives.randomBytes(32)
         self.attestation = attestation ?? AttestationSubsystem()
         self.session = nil
-        self.prevSessionBytes = Data(repeating: 0, count: 32)
         self.ratchetClock = ratchetClock ?? (try! RatchetClock())
         self.continuityKey = nil
         self.enrollmentSecret = Primitives.randomBytes(32)
@@ -133,10 +132,14 @@ public final class Device {
         // PoLE_value: a physiologically-TIMED QRNG value (clean QRNG; timing only
         // scheduled the firing).
         let poleValue = PoLE.firePoLEValue(physioFireMoment: pole.pLive)
-        let sk = Derivation.sessionKeyDecoupled(lk: lk, epochKey: epochKey, poleValue: poleValue,
-                                                prevKey: prevSessionBytes, contextSeparator: Params.contextTunnel,
-                                                drandRound: drandRound)
-        prevSessionBytes = try sk.key
+        let sk = prevSessionBytes.withBytes { prev in
+            Derivation.sessionKeyDecoupled(lk: lk, epochKey: epochKey, poleValue: poleValue,
+                                           prevKey: Data(prev), contextSeparator: Params.contextTunnel,
+                                           drandRound: drandRound)
+        }
+        // Carry the chain forward IN PLACE — never mint a Data copy that
+        // outlives destroy() (§2.2).
+        try sk.withKey { prevSessionBytes.setFrom($0) }
         session = sk
         return sk
     }
@@ -164,8 +167,12 @@ public final class Device {
     private func wipeSession() {
         // Containment (§2.2): destroy ALL session-derived material in RAM — the
         // live SessionKey, the ratchet's prev-key copy, and the continuity-chain key.
+        // WIPE, do not reassign: `x = Data(...)` / `x = nil` would drop the old
+        // allocation intact for the allocator to hand out again, which is the
+        // whole failure this method exists to prevent.
         session?.destroy()
-        prevSessionBytes = Data(repeating: 0, count: 32)
+        prevSessionBytes.wipe()
+        continuityKey?.wipe()
         continuityKey = nil
     }
 
@@ -204,11 +211,15 @@ public final class Device {
             return ContinuityTick(intervalS: intervalS, continuityKey: Data(), attestation: nil, operate: false)
         }
         if continuityKey == nil {
-            continuityKey = try currentSession().key      // seed from live session
+            continuityKey = SecretBytes()
+            try currentSession().withKey { continuityKey!.setFrom($0) }   // seed from live session
         }
         let entropyT = Primitives.randomBytes(32)         // clean QRNG; no timing in value
-        continuityKey = Derivation.ratchet(continuityKey!, entropyT: entropyT, beaconT: beacon, drandRound: drandRound)
-        return ContinuityTick(intervalS: intervalS, continuityKey: continuityKey!, attestation: att, operate: true)
+        let advanced = continuityKey!.withBytes { ck in
+            Derivation.ratchet(Data(ck), entropyT: entropyT, beaconT: beacon, drandRound: drandRound)
+        }
+        continuityKey!.setFrom(advanced)
+        return ContinuityTick(intervalS: intervalS, continuityKey: advanced, attestation: att, operate: true)
     }
 
     // -- recognition + tunnel (§4) — unchanged X25519 handshake --------------

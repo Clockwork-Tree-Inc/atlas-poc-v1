@@ -81,18 +81,67 @@ public final class SessionKey {
         buf.deallocate()
     }
 
-    /// Wipe that the optimiser is not permitted to elide.
-    private static func wipe(_ b: UnsafeMutableRawBufferPointer) {
-        guard let base = b.baseAddress, b.count > 0 else { return }
-        #if canImport(Darwin)
-        _ = memset_s(base, b.count, 0, b.count)
-        #else
-        // No memset_s: write through a runtime-obtained pointer (the optimiser
-        // cannot prove the store dead) and keep the buffer alive across it.
-        let p = UnsafeMutableRawPointer(base).assumingMemoryBound(to: UInt8.self)
-        for i in 0..<b.count { p.advanced(by: i).pointee = 0 }
-        withExtendedLifetime(b) {}
-        #endif
+    static func wipe(_ b: UnsafeMutableRawBufferPointer) { secureWipe(b) }
+}
+
+/// Wipe that the optimiser is not permitted to elide. A zeroing loop over memory
+/// never read again is a dead store the compiler may delete — which is precisely
+/// why `memset_s`/`explicit_bzero` exist.
+func secureWipe(_ b: UnsafeMutableRawBufferPointer) {
+    guard let base = b.baseAddress, b.count > 0 else { return }
+    #if canImport(Darwin)
+    _ = memset_s(base, b.count, 0, b.count)
+    #else
+    // No memset_s: write through a runtime-obtained pointer (the optimiser
+    // cannot prove the store dead) and keep the buffer alive across it.
+    let p = base.assumingMemoryBound(to: UInt8.self)
+    for i in 0..<b.count { p.advanced(by: i).pointee = 0 }
+    withExtendedLifetime(b) {}
+    #endif
+}
+
+/// A wipeable buffer for key material that must be HELD ACROSS CALLS.
+///
+/// `Data` cannot be wiped: reassigning (`x = Data(repeating: 0, count: 32)`)
+/// drops the old copy-on-write allocation intact for the allocator to hand out
+/// again. Anything that RETAINS key material on a long-lived object — the
+/// ratchet's prev-key, the continuity chain — must live here instead, so a
+/// device seized right after a liveness break holds no usable material
+/// (§2.2, §5.3). Mirrors `SecretBytes` in `backend/atlas/keys/derivation.py`.
+///
+/// `setFrom()` overwrites IN PLACE; the buffer's address never changes, so
+/// there is never a second copy to chase.
+public final class SecretBytes {
+    private let buf: UnsafeMutableRawBufferPointer
+
+    public init(count: Int = 32) {
+        buf = UnsafeMutableRawBufferPointer.allocate(
+            byteCount: count, alignment: MemoryLayout<UInt8>.alignment)
+        secureWipe(buf)
+    }
+
+    /// Borrow the material without minting a copy the wipe cannot reach.
+    /// Valid ONLY for the duration of `body` — do not escape it.
+    public func withBytes<T>(_ body: (UnsafeRawBufferPointer) throws -> T) rethrows -> T {
+        try body(UnsafeRawBufferPointer(buf))
+    }
+
+    /// Overwrite in place from any raw buffer of the same length.
+    public func setFrom(_ src: UnsafeRawBufferPointer) {
+        precondition(src.count == buf.count, "length mismatch")
+        buf.copyMemory(from: src)
+    }
+
+    public func setFrom(_ src: Data) {
+        src.withUnsafeBytes { setFrom($0) }
+    }
+
+    /// Zeroise in place. Idempotent.
+    public func wipe() { secureWipe(buf) }
+
+    deinit {
+        secureWipe(buf)
+        buf.deallocate()
     }
 }
 

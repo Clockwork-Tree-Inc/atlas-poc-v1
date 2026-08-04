@@ -50,6 +50,51 @@ class KeyDestroyedError(RuntimeError):
     """Raised when a destroyed (RAM-wiped) session key is used."""
 
 
+class SecretBytes:
+    """A wipeable buffer for key material that must be HELD ACROSS CALLS.
+
+    Plain `bytes` cannot be wiped: rebinding (`x = b"\\x00" * 32`) drops the old
+    object intact for the allocator to hand out again. Anything that retains key
+    material on a long-lived object — the ratchet's prev-key, the continuity
+    chain — must live here instead, so a device seized right after a liveness
+    break holds no usable material (§2.2, §5.3).
+
+    `set_from()` overwrites IN PLACE; the buffer's identity never changes, so
+    there is never a second copy to chase.
+    """
+
+    __slots__ = ("_buf",)
+
+    def __init__(self, data: bytes = b"\x00" * 32) -> None:
+        self._buf = bytearray(data)
+
+    @contextmanager
+    def borrow(self) -> Iterator[memoryview]:
+        """Read-only view of the live buffer — valid only inside the block."""
+        view = memoryview(self._buf).toreadonly()
+        try:
+            yield view
+        finally:
+            view.release()
+
+    def set_from(self, src) -> None:
+        """Overwrite in place from any buffer-protocol source (same length)."""
+        if len(src) != len(self._buf):
+            raise ValueError(f"length mismatch: {len(src)} != {len(self._buf)}")
+        self._buf[:] = src
+
+    def wipe(self) -> None:
+        """Zeroise in place. Idempotent."""
+        for i in range(len(self._buf)):
+            self._buf[i] = 0
+
+    def __del__(self) -> None:
+        try:
+            self.wipe()
+        except Exception:
+            pass
+
+
 @dataclass
 class SessionKey:
     """RAM-only session key material (§2.2). Never written to storage.

@@ -18,7 +18,7 @@ from typing import Optional
 
 from ..crypto.primitives import H, hkdf, random_bytes
 from ..crypto.sign import HybridSigPublic, keypair_from_seed, sign as hybrid_sign, verify as hybrid_verify
-from ..keys.derivation import SessionKey, derive_session_key_decoupled, ratchet
+from ..keys.derivation import SecretBytes, SessionKey, derive_session_key_decoupled, ratchet
 from ..keys.enclave import SecureEnclave
 from ..keys.identity import IdentityTree
 from ..liveness.attestation import AttestationSubsystem, LivenessAttestation
@@ -94,12 +94,12 @@ class Device:
         self.tunnel_key = bootstrap_tunnel_key if self.bootstrapped else random_bytes(32)
         self.attestation = attestation or AttestationSubsystem()
         self._session: Optional[SessionKey] = None
-        self._prev_session_bytes = b"\x00" * 32
+        self._prev_session_bytes = SecretBytes()
         self._hs = None   # in-flight hybrid recognition handshake state
         # Independent local continuity-ratchet clock (~10s ± jitter, §5.3) and
         # the latest cached beacon it folds in (it does NOT wake to fetch).
         self._ratchet_clock = ratchet_clock or RatchetClock()
-        self._continuity_key: Optional[bytes] = None
+        self._continuity_key: Optional[SecretBytes] = None
         # Presence enrollment (§2.3 / FIX #7): a shared enrollment secret sealed in
         # the device Secure Enclave, released only on live enrolled presence. The
         # server holds a copy to WRAP epoch keys; the device can only UNWRAP them
@@ -160,15 +160,19 @@ class Device:
         # PoLE_value: a physiologically-TIMED QRNG value (clean QRNG; timing only
         # scheduled the firing). Replaces the earlier un-timed local_qrng_draw.
         pole_value = fire_pole_value(physio_fire_moment=pole.p_live)
-        sk = derive_session_key_decoupled(
-            lk=lk,
-            epoch_key=epoch_key,
-            pole_value=pole_value,
-            prev_key=self._prev_session_bytes,
-            context_separator=CONTEXT_TUNNEL,
-            drand_round=drand_round,
-        )
-        self._prev_session_bytes = sk.key
+        with self._prev_session_bytes.borrow() as prev:
+            sk = derive_session_key_decoupled(
+                lk=lk,
+                epoch_key=epoch_key,
+                pole_value=pole_value,
+                prev_key=prev,
+                context_separator=CONTEXT_TUNNEL,
+                drand_round=drand_round,
+            )
+        # Carry the chain forward IN PLACE — never mint a bytes copy that
+        # outlives destroy() (§2.2).
+        with sk.borrow() as k:
+            self._prev_session_bytes.set_from(k)
         self._session = sk
         return sk
 
@@ -198,10 +202,15 @@ class Device:
         # just the live SessionKey object. The ratchet's prev-key copy and the
         # continuity-chain key must go too, or a device seized right after a
         # liveness break still holds usable key material.
+        # WIPE, do not rebind: `x = SecretBytes()` / `x = None` would drop the
+        # old buffer intact for the allocator to hand out again, which is the
+        # whole failure this method exists to prevent.
         if self._session is not None:
             self._session.destroy()
-        self._prev_session_bytes = b"\x00" * 32
-        self._continuity_key = None
+        self._prev_session_bytes.wipe()
+        if self._continuity_key is not None:
+            self._continuity_key.wipe()
+            self._continuity_key = None
 
     # -- independent continuity ratchet (§5.3) — local 10s ± biological jitter --
 
@@ -237,13 +246,16 @@ class Device:
             return ContinuityTick(interval_s=interval_s, continuity_key=b"",
                                   attestation=None, operate=False)
         if self._continuity_key is None:
-            self._continuity_key = self.session.key      # seed from live session
+            self._continuity_key = SecretBytes()
+            with self.session.borrow() as k:             # seed from live session
+                self._continuity_key.set_from(k)
         entropy_t = random_bytes(32)                     # clean QRNG; no timing in value
-        self._continuity_key = ratchet(
-            self._continuity_key, entropy_t=entropy_t,
-            beacon_t=beacon, drand_round=drand_round)
+        with self._continuity_key.borrow() as ck:
+            advanced = ratchet(ck, entropy_t=entropy_t,
+                               beacon_t=beacon, drand_round=drand_round)
+        self._continuity_key.set_from(advanced)
         return ContinuityTick(interval_s=interval_s,
-                              continuity_key=self._continuity_key,
+                              continuity_key=advanced,
                               attestation=att, operate=True)
 
     # -- recognition + tunnel (§4) — HYBRID PQ (ML-KEM + X25519) -------------
@@ -253,7 +265,8 @@ class Device:
     def start_recognition(self, beacon: bytes) -> HybridContribution:
         """Round 1: derive the X25519 half from the session key + a fresh ML-KEM
         ephemeral keypair; return the public contribution."""
-        x_priv, mlkem_dk, pub = hybrid_contribution(self.session.key, beacon)
+        with self.session.borrow() as k:
+            x_priv, mlkem_dk, pub = hybrid_contribution(bytes(k), beacon)
         self._hs = {"x_priv": x_priv, "mlkem_dk": mlkem_dk, "pub": pub, "ss_self": None}
         return pub
 
