@@ -138,8 +138,10 @@ public final class Device {
                                            drandRound: drandRound)
         }
         // Carry the chain forward IN PLACE — never mint a Data copy that
-        // outlives destroy() (§2.2).
-        try sk.withKey { prevSessionBytes.setFrom($0) }
+        // outlives destroy() (§2.2). ROLE SEPARATION (§2.3): what is carried is
+        // the `chain` LEAF, not the root session key. The raw K[t] must not also
+        // be the value that seeds the next epoch — see Params.contextChain.
+        prevSessionBytes.setFrom(try sk.contextKey("chain"))
         session = sk
         return sk
     }
@@ -212,7 +214,11 @@ public final class Device {
         }
         if continuityKey == nil {
             continuityKey = SecretBytes()
-            try currentSession().withKey { continuityKey!.setFrom($0) }   // seed from live session
+            // ROLE SEPARATION (§2.3): seed from the `continuity` LEAF of the live
+            // session key, never the root. This chain runs on the device clock and
+            // its advanced value is handed to callers as plain Data; it must not
+            // start life equal to the epoch chain's seed.
+            continuityKey!.setFrom(try currentSession().contextKey("continuity"))
         }
         let entropyT = Primitives.randomBytes(32)         // clean QRNG; no timing in value
         let advanced = continuityKey!.withBytes { ck in
@@ -224,9 +230,13 @@ public final class Device {
 
     // -- recognition + tunnel (§4) — unchanged X25519 handshake --------------
 
+    /// The X25519 half is derived from the session key's `recognition` LEAF, not
+    /// the root: `.key` on the root mints an escaping `Data` copy that outlives
+    /// `destroy()` (§2.2). Both endpoints derive the same leaf, so the handshake
+    /// is unchanged.
     public func recognitionContribution(beacon: Data) throws
         -> (priv: Curve25519.KeyAgreement.PrivateKey, pub: RecognitionContribution) {
-        Recognition.contribution(sessionKey: try currentSession().key, beacon: beacon)
+        Recognition.contribution(sessionKey: try currentSession().contextKey("recognition"), beacon: beacon)
     }
 
     @discardableResult

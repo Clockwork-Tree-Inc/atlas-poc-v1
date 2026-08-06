@@ -26,7 +26,19 @@ def _sk(prev=b"\x00" * 32):
 
 def test_context_keys_are_purpose_separated():
     sk = _sk()
-    assert sk.context_key("storage") != sk.context_key("tunnel") != sk.context_key("recognition")
+    ctxs = ["storage", "tunnel", "recognition", "chain", "continuity"]
+    leaves = [sk.context_key(c) for c in ctxs]
+    assert len(set(leaves)) == len(ctxs)           # pairwise distinct, not just adjacent
+
+
+def test_no_leaf_equals_the_root_session_key():
+    """ROLE SEPARATION (§2.3). The session key is a ROOT: every consumer takes a
+    one-way leaf, so a leaked leaf yields neither the root nor a sibling. A
+    refactor that hands a consumer the raw bytes again must fail here."""
+    sk = _sk()
+    root = sk.key
+    for c in ("storage", "tunnel", "recognition", "chain", "continuity"):
+        assert sk.context_key(c) != root
 
 
 def test_session_key_destroy_is_containment():

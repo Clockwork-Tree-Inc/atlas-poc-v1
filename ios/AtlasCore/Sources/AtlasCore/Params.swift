@@ -47,6 +47,18 @@ public enum Params {
     public static let contextRecognition = Data("atlas/recognition".utf8)
     public static let contextTunnel = Data("atlas/tunnel".utf8)
 
+    // ROLE SEPARATION (§2.3). The session key K[t] is a ROOT, not a working key.
+    // It previously served three roles verbatim — the value carried forward as
+    // the next epoch's prevKey, the continuity-ratchet seed, and the recognition
+    // ephemeral seed — so prevSessionBytes, continuityKey and the recognition
+    // input were three names for one secret. The epoch chain and the continuity
+    // chain run on DIFFERENT clocks and are exposed through DIFFERENT surfaces
+    // (ContinuityTick.continuityKey is handed to callers as plain Data); they
+    // must not share a seed with each other or with the root. Each role now gets
+    // its own one-way HKDF leaf. Mirrors backend/atlas/params.py.
+    public static let contextChain = Data("atlas/chain".utf8)            // next epoch's prevKey
+    public static let contextContinuity = Data("atlas/continuity".utf8)  // continuity-ratchet seed
+
     // Domain-separation labels for the hybrid primitives.
     public static let labelXWing = Data("atlas/x-wing/v1".utf8)
     public static let labelRatchet = Data("atlas/ratchet/v1".utf8)

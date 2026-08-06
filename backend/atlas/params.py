@@ -103,6 +103,19 @@ CONTEXT_STORAGE = b"atlas/storage"
 CONTEXT_RECOGNITION = b"atlas/recognition"
 CONTEXT_TUNNEL = b"atlas/tunnel"
 
+#: ROLE SEPARATION (§2.3). The session key K[t] is a ROOT, not a working key. It
+#: previously served three roles verbatim — the value carried forward as the next
+#: epoch's `prev_key`, the continuity-ratchet seed, and the recognition ephemeral
+#: seed — so `_prev_session_bytes`, `_continuity_key` and the recognition input
+#: were three names for one secret. The epoch chain and the continuity chain run
+#: on DIFFERENT clocks and are exposed through DIFFERENT surfaces (a
+#: `ContinuityTick.continuity_key` is handed to callers as plain bytes); they must
+#: not share a seed with each other or with the root. Each role now gets its own
+#: one-way HKDF leaf, so compromising one leaf yields neither the root nor the
+#: sibling roles.
+CONTEXT_CHAIN = b"atlas/chain"            # value fed forward as next epoch's prev_key
+CONTEXT_CONTINUITY = b"atlas/continuity"  # seed of the local continuity ratchet
+
 #: Domain-separation labels for the hybrid primitives.
 LABEL_XWING = b"atlas/x-wing/v1"
 LABEL_RATCHET = b"atlas/ratchet/v1"

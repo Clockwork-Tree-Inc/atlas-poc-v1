@@ -32,6 +32,8 @@ from typing import Iterator
 
 from ..crypto.primitives import H, hkdf_combine
 from ..params import (
+    CONTEXT_CHAIN,
+    CONTEXT_CONTINUITY,
     CONTEXT_RECOGNITION,
     CONTEXT_STORAGE,
     CONTEXT_TUNNEL,
@@ -39,10 +41,14 @@ from ..params import (
     LABEL_SESSION,
 )
 
+#: Every consumer of a session key takes a purpose-scoped LEAF, never the root.
+#: `chain` and `continuity` are the two long-lived ones — see params.CONTEXT_CHAIN.
 _CONTEXTS = {
     "storage": CONTEXT_STORAGE,
     "recognition": CONTEXT_RECOGNITION,
     "tunnel": CONTEXT_TUNNEL,
+    "chain": CONTEXT_CHAIN,
+    "continuity": CONTEXT_CONTINUITY,
 }
 
 
@@ -98,6 +104,14 @@ class SecretBytes:
 @dataclass
 class SessionKey:
     """RAM-only session key material (§2.2). Never written to storage.
+
+    ROLE SEPARATION (§2.3). This is a ROOT, not a working key. NOTHING outside
+    this class should consume the raw bytes: every consumer takes a purpose-scoped
+    leaf via `context_key()` (`storage`, `recognition`, `tunnel`, `chain`,
+    `continuity`). HKDF is one-way, so a leaked leaf yields neither the root nor
+    any sibling leaf — which is the whole point, because the epoch chain and the
+    continuity chain tick on different clocks and are exposed through different
+    surfaces. Handing the same 32 bytes to both makes one compromise into three.
 
     KEY LIFETIME (§2.2 containment). `destroy()` zeroises the ONE buffer this
     object owns. It cannot reach a copy someone else already took, so the

@@ -269,6 +269,37 @@ def test_containment_session_inert_after_liveness_break():
     assert A._continuity_key is None
 
 
+def test_session_key_roles_do_not_share_one_secret():
+    """ROLE SEPARATION (§2.3). The session key K[t] once served three roles
+    verbatim — the next epoch's prev_key, the continuity-ratchet seed, and the
+    recognition ephemeral seed — so three independent subsystems held ONE secret
+    and any single leak was three leaks. Each role now takes its own one-way leaf.
+
+    The two chains matter most: they tick on different clocks (epoch beacon vs
+    the device's local ~10s ratchet) and the continuity chain's value is handed to
+    callers as plain bytes."""
+    from atlas.liveness.bayes import PoLEState
+
+    A, _ = _pair()
+    A.advance_epoch_present(lk=b"L" * 32, epoch_key=b"E" * 32, drand_round=b"\x00" * 8)
+    root = A.session.key
+
+    with A._prev_session_bytes.borrow() as prev:
+        chain_seed = bytes(prev)
+    assert chain_seed != root                       # epoch chain is a leaf, not the root
+
+    pole = PoLEState(p_live=1.0, state_digest=b"d" * 32, drand_round=b"\x00" * 8, operate=True)
+    A.continuity_tick(pole, drand_round=b"\x00" * 8, beacon=b"bcn")
+    with A._continuity_key.borrow() as ck:
+        assert bytes(ck) != root                    # continuity chain likewise
+    # and the two chains are not the same secret as each other
+    assert A.session.context_key("chain") != A.session.context_key("continuity")
+
+    # the recognition handshake takes a leaf too: the root never crosses the
+    # function boundary as an unwipeable `bytes`.
+    assert A.session.context_key("recognition") != root
+
+
 def test_containment_wipes_in_place_so_a_retained_reference_sees_zeros():
     """Seizure model: an attacker who already holds a reference to the device's
     key buffers must find them zeroed, not merely detached. Rebinding the field

@@ -7,6 +7,13 @@ public enum KeyError: Error { case destroyed }
 /// RAM-only session key (§2.2). `destroy()` zeroises it — the primary
 /// containment mechanism. Reference type so a wipe is observed by all holders.
 ///
+/// ROLE SEPARATION (§2.3). This is a ROOT, not a working key. Nothing outside
+/// this class should consume the raw bytes: every consumer takes a purpose-scoped
+/// leaf via `contextKey()` (`storage`, `recognition`, `tunnel`, `chain`,
+/// `continuity`). The epoch chain and the continuity chain tick on different
+/// clocks and are exposed through different surfaces; handing the same 32 bytes
+/// to both turns one compromise into three.
+///
 /// KEY LIFETIME. The buffer is EXPLICITLY allocated rather than held in a Swift
 /// `Array`/`Data`: those are copy-on-write and the runtime may reallocate them,
 /// leaving stale plaintext at the old address that no wipe can reach. One
@@ -52,12 +59,17 @@ public final class SessionKey {
         }
     }
 
+    /// Derive a purpose-scoped LEAF. Every consumer of a session key takes one of
+    /// these; nothing outside this class consumes the raw root. HKDF is one-way,
+    /// so a leaked leaf yields neither the root nor a sibling leaf.
     public func contextKey(_ context: String) throws -> Data {
         let info: Data
         switch context {
         case "storage": info = Params.contextStorage
         case "recognition": info = Params.contextRecognition
         case "tunnel": info = Params.contextTunnel
+        case "chain": info = Params.contextChain
+        case "continuity": info = Params.contextContinuity
         default: fatalError("unknown context \(context)")
         }
         return try withKey { raw in

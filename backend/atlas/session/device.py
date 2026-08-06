@@ -170,9 +170,10 @@ class Device:
                 drand_round=drand_round,
             )
         # Carry the chain forward IN PLACE — never mint a bytes copy that
-        # outlives destroy() (§2.2).
-        with sk.borrow() as k:
-            self._prev_session_bytes.set_from(k)
+        # outlives destroy() (§2.2). ROLE SEPARATION (§2.3): what is carried is
+        # the `chain` LEAF, not the root session key. The raw K[t] must not also
+        # be the value that seeds the next epoch — see params.CONTEXT_CHAIN.
+        self._prev_session_bytes.set_from(sk.context_key("chain"))
         self._session = sk
         return sk
 
@@ -247,8 +248,11 @@ class Device:
                                   attestation=None, operate=False)
         if self._continuity_key is None:
             self._continuity_key = SecretBytes()
-            with self.session.borrow() as k:             # seed from live session
-                self._continuity_key.set_from(k)
+            # ROLE SEPARATION (§2.3): seed from the `continuity` LEAF of the live
+            # session key, never the root. This chain runs on the device clock and
+            # its advanced value is handed to callers as plain bytes; it must not
+            # start life equal to the epoch chain's seed.
+            self._continuity_key.set_from(self.session.context_key("continuity"))
         entropy_t = random_bytes(32)                     # clean QRNG; no timing in value
         with self._continuity_key.borrow() as ck:
             advanced = ratchet(ck, entropy_t=entropy_t,
@@ -263,10 +267,14 @@ class Device:
     # channel: a two-round handshake (exchange contributions, then ciphertexts).
 
     def start_recognition(self, beacon: bytes) -> HybridContribution:
-        """Round 1: derive the X25519 half from the session key + a fresh ML-KEM
-        ephemeral keypair; return the public contribution."""
-        with self.session.borrow() as k:
-            x_priv, mlkem_dk, pub = hybrid_contribution(bytes(k), beacon)
+        """Round 1: derive the X25519 half from the session key's `recognition`
+        leaf + a fresh ML-KEM ephemeral keypair; return the public contribution.
+
+        The leaf, not the root: `bytes(k)` on the root would mint an immutable,
+        unwipeable copy of the session key that survives `destroy()` until the GC
+        frees it (§2.2). Both endpoints derive the same leaf, so the handshake is
+        unchanged."""
+        x_priv, mlkem_dk, pub = hybrid_contribution(self.session.context_key("recognition"), beacon)
         self._hs = {"x_priv": x_priv, "mlkem_dk": mlkem_dk, "pub": pub, "ss_self": None}
         return pub
 
