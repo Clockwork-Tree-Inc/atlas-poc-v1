@@ -1,0 +1,23 @@
+[Unit]
+Description=Atlas blind-relay node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=atlas
+Group=atlas
+WorkingDirectory=/opt/atlas/backend
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/atlas/venv/bin/python -m atlas.net.node_server --host 0.0.0.0 --port 8787
+Restart=on-failure
+RestartSec=3
+# hardening: the node needs nothing beyond its own storage
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/atlas
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

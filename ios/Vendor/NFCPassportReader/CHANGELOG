@@ -1,0 +1,386 @@
+V2.3.3
+   Added Optional Data element to passport model - pulls out element 53 from DG1
+V2.3.2
+   Updated to OpenSSL 3.6 - hoping to fix issue with missing DSYMS
+V2.3.1
+   Fixed issue reading some JPEG2000 images - they had additional padding after them causeing the image reader to think
+      there was another container
+   Fixed MasterList script parser to handle new LDIF binary format from ICAO PKD
+V2.3.0
+   Added fix for OpenSSL 3.3 breaking SOD X509 certificate verification - thanks @SteveDove for reporting and testing
+   Added ability to provide a custom AA Challenge key for supporting backend AA challenges and eliminating replay attacks - thanks @Premeide
+   Updated to use the binary OpenSSL-Package to improve repo loading times and updated Cocoapods to use OpenSSL 3.3.1001 binary too - thanks @ospfranco
+   Updated docs to say that Cocoapods will continue to be released to until end-2026 but will not be a supported deployment. - thanks @ospfranco
+   Added ability to skip PACE and CA authorisations in demo app
+
+V2.2.0
+   Upgrade to OpenSSL V3 - thanks to @agmike
+
+v2.1.2
+   Added tracking delegate and improved error handling - thanks to @mikahautz-mohemian, @josiporezic-mohemian and @lauraheiger-mohemian
+   Fix to readme example - thanks @Daymox
+   Fix to skip unknown tags - thanks @TerjeLon
+   Remove arm64 excluded arch related podspecs - Thanks @Vadjo
+
+v2.1.1 Implemented a fix for when Active Authentication fails as there are more bytes available - thanks to @petteri-huusko-op
+
+v2.1.0
+   Bumped minimum version to iOS 14
+   Logging has changed to use OSLog framework.  This removes the different loglevel settings, and the export will only include the last passport read.
+   There is currently an issue reading some passports (I've noticed it with the iPhone 15 Pro) in that the
+       connection with the tag randoly drops.  This also happens with the ReadID app too so suspect its an
+       issue with CoreNFC
+
+   Merged PR 189 - Handle change in MasterList extraction script
+       Changed from CscaMasterListData to pkdMasterListContent - thanks @jakudolejs and @Thormeard
+
+   Merged PR 186 - handle iOS 16 error message when user removed tag during scanning
+       Added additional error check - thanks @TLOn1
+       Added public invalidate method to end tag reader session - thanks @sergeyshalnov
+
+   Merged PR 181 - Expose mapped values for Face Image Information - thanks @TerjeLon
+
+   Merged PR 178 - Improve error reporting of invalid response
+       Updated NFCPassportReaderError.InvalidResponse to provide more information regarding the datagroup and the read tag
+       Added a new error case Unknown(Error) to handle errors not directly handled by the SDK
+       Added tests to cover the improved output
+       dataGroupType is now a computed property. This change makes it readonly and also available when an error needs to be 
+          thrown in parse method
+       Fixed an issue in PassportReader by removing nfcContinuation calls here as this is called in invalidateSession
+       Thanks - @markus-mohemian
+
+   Merged PR 172 - Introduced new display message for activate authentication state
+
+v2.0.3
+   Fix - for issue 170 - DO99 Fatal error provided by @jjynus
+       Guard check for size of rapduBin array
+	
+v2.0.2
+   Fix - change expected response length to -1 in TagReader:selectPassportApplication.
+      Should have been part of @TimoTegtmeier's PR (#153) but missed!
+      Thanks to @Thormeard for spotting this
+
+v2.0.1
+   Updated to latest version of OpenSSL - 1.1.1900
+   Fixed warnings of publishing updates on background thread when scanning MRZ (example SPM)
+   DataGroup12 class is now public (PR152) - thanks @recp
+   Improved compatibility with some documents by omitting LE (PR153) - set LE to -1 for commands not expected to return data - thanks @TimoTegtmeier
+
+v2.0.0
+   Switched app over to user async/await - makes the code paths much simpler
+   Added fix for DG11 names - thanks @TerjeLon 
+   Added fix for missing reader session invalidation - thanks @TerjeLon
+   Added fix for crash when there is no image in the DG2 - thanks @brkerturk 
+
+v1.1.9
+   Retrieves names from DG11 if present otherwise fall back to DG1 - thanks @TerjeLon
+   Fixed bug with Chip Authentication - thanks @pauphi and @jennytellne-cygni 
+   Fix Active Authentication with ECDSA signature - thanks @pauphi
+   Fix for CA when keyId is not nil - thanks @pauphi
+
+   This will be the last < iOS 13 version as will be moving to async/await
+
+v1.1.8
+   Retrieves personal  number from DG11 (if its present) otherwise fall back to DG1 (as per ICAO Docs) - thanks @TerjeLon
+   Added support for BDC Date/time encoding for DG12 - thanks @jakub-vallo 
+   Fixed wrong type in DG12 - thanks @jakub-vallo and @markus-mohemian
+   Fixed extract of ICAO Masterlist extract - openssl cms verify and extract signed command output format changed
+        thanks @georgepadayatti
+   Fixed issue with continuing scan after read session has been invalidated - thanks @markus-mohemian
+   
+V1.1.7
+   Fix for SecureMessaging - buildD097 where we ignored if length was >= 256 - thanks to @pmitche
+
+V1.1.6
+   Fixed tag in DG11 - Thanks @Jusstas.
+   Fixed deploying to iOS 12 - added weak framework CryptoTokenKit to podspec - thanks @Jeroenbb94
+   Fixed crash in getNextTag when not enough data is present (happens with some passports) - thanks @Benny-iPhone
+   
+V1.1.5
+   Fixed potential issue when checking for invalid ECDSA signatures. Now rather than assuming if both BigNums
+     have a zero prefix, we actually check the bignums for validity.
+   Added ability to skip Chip Authentication and PACE (use the new skipCA and skipPACE parameters on
+     readPassport)
+   Added some additional logging and changed some existing logging catagories 
+
+v1.1.4
+   Fixed use of ephemeral params that managed to get reverted!
+   Added a couple of addition error messages to TagReader
+   Added MRZ key logging
+   Added ability to turn off logging completely
+
+v1.1.3
+    Fix for some ECDSA based message digests which seem to have invalid format (0x00 prefixed on the integers)
+       See OpenSSLUtils :: verifySignature for details on the fix
+       Thanks to @wellbranding for the report and helping test
+
+v1.1.2
+    Implemented PACE
+       Currently only GM mapping is supported (IM and CAM not yet), but supports both ECDH and DH encryption
+            Many thanks to @filom again for really helping me debug and fix the DH implementation!
+    Added ability to select MasterFile and also reselect the eMRTD application record
+    Now tries to read the CardAccess file (in master record) - required for PACE
+    Fix to use extended length if the size of the protected APDU is more than 255 chars
+       Changed wrapDO/unwrapDO to use TKBERTLVRecord to handle the encoding/decoding rather than doing it manually
+       Thanks again to @filom for this fix.
+    Some fixes to Chip Authentication not freeing up some objects correctly,
+        and also fixes where no ChipAuthenticationInfo sections are included, try to guess what oid it would be.)
+    binToHexRep can now optionally output hex as array text (defaults to existing behaviour)
+    SHA224 hashes should now be supported
+    
+v1.1.1
+    Implemented ChipAuthentication - currently only ECDH DES and AES based keys are tested.  DH DES & AES keys should work though
+    Demo app now includes the SecurityInfos information
+    
+v1.1.0
+    This release contains the following minor breaking changes:
+        TagError has been renamed to NFCPassportReaderError
+    Upgraded to OpenSSL 1.1.1i
+        This moved from typed pointers (e.g. UnsafeMutablePointer<X509>) to OpaquePointers (due to OpenSSL changes)
+        No longer accessing OpenSSL structures directly - now using OpenSSL methods (as we should)
+    Can use most of it under macOS (not the NFC reading bits though part yet as thats not supported)
+        Also, currently can't get images out under Mac as not done the NSImage/UIImage conversion
+       Should support macOS 10.15+
+    Implemented SOD Verification as per RFC 5652 - this is set as the default behaviour but can be switched back
+        to OpenSSL CMS Verification if desired. This fixes the issue where the datagroup hashes are hashed using SHA512 but the
+        SOD signed digest is hashed with SHA256.
+    Added SimpleASN1DumpParser to parse ASN1 data - bit of a cheat as we just parse the OpenSSL ASN1Dump output rather
+        then parsing the ASN1 directly (no time yet to write an ASN1 parser)
+    Restructured code:
+       split DataGroups out into own files
+       moved other structs into own file
+    Sample app is a little more feature rich - redesign to make it a little more friendly and usable
+        Can export raw passport data (as JSON with Base64 encoded binary fields for each datagroup)
+            Select which DataGroups are included in the export
+            Can also export the Active Authentication challenge and signature for later verification testing
+        Can import previously exported passports (through the Files app)
+        Passports can be saved on scan or import (default is off). Saved passports are stored in caches folder (not backed up)
+           and stored with .complete file protection (encrypted while device locked)
+        Can scan MRZ from passport (Currently using the QKMRZScanner component)
+
+v1.0.17
+    Active Authentication now supports RSA Keys (thanks to @himtim for testing and sharing data)
+    
+v1.0.16
+    Fix to SampleApp - to actually use the padded fields rather than using them for the checksum calculation only!
+
+v1.0.15
+    Reverted previous TagReader change and dropped MaxReadData back  back to 160 (A0) as this causes issues with older passports
+        not supporting arbitrary amounts and failing to re-establish connection. Means a slightly longer read time but better 
+        reliability (I hope)
+    Added ability to customise the MaxDataRead field - Use PassportReader :: overrideNFCDataAmountToRead(). This is useful for development only
+    Now supports SHA384 and SHA512 Datagroup Hashes
+    Added better error messages (fixes the TagError 11 message) and debug messages
+    Locked OpenSSL version to 1.0.2.20 - (OpenSSL 1.0.2u).  There are currently issues upgrading to latest OpenSSL due to underlying
+        c-struct changes.
+    Sample app now correctly pads fields if not valid length (e.g. if a passport number if < 9 chars then pads with filler char (<)    
+    Added ability for Sample App to import a passport dump file IF a passport.json is included in the app bundle (will possibly look at being able to import from Files later)
+    Version is displayed in sample app
+
+    
+v1.0.14
+    Merged pull request from @JokeCoder - to expose phone number, residence address and place of birth from DG11 if present.
+    Changed logging to be able to store all passport logs to a temporary array for sharing
+    Example app can now capture logs and share them
+    Changed TagReader - now uses LE - 256 for most reads, and only read a specific data amount if maxDataToRead (le) is not set to 256.
+        This seems to fix an issue when reading the image and it fails on the last read and drops down to a smaller size. (iOS14 change?)
+    
+v1.0.13
+    Extract script (for creating masterlist files) now skips embedded masterlists which fail verification 
+    e.g. UnitedNations CSCA in current ICAO list (icaopkd-002-ml-000161.ldif).
+    You can now get the whole byte array for a datagroup (including headers) not just the body
+    Added dumpPassportData method to NFCPassportModel to save the passport datagroups as a String:base64String dictionary
+    Can now set the logLevel on the PassportReader - defaults to info
+    Added better comments for the ASN1 functions
+    Demo app now has ability to clear textfields
+    Demo app now has the ability to export passport data as JSON file (via ShareSheet)
+v1.0.12
+    Fix for verifyECDSASignature - better handling of sigData so it compiles with Swift 5.3
+    ResponseError now displays the SW tag values
+
+v1.0.11
+    TagReaader starts off trying to read arbitary data amounts, however this can fail on some passports which
+    seem to need an explicit length so in this case, when we get a failure, fall back to reading smaller specific
+    amounts - Thanks for @douglasg for reporting and testing and @SaliienkoAleksandr for testing this.
+
+V1.0.10
+    Added ability to customise the mesasges displayed in NFCReaderSession View - Thanks to @danydev for PR 41
+    
+V1.0.9
+    Add better error handling on different session invalidation error conditions - Thanks to @danydev - PR 39
+
+v1.0.8
+    Changed readingBinary data use 256 (0x100) instead of an expected read amount - this tells the reader that an arbitrary long chunk of data is expected in response.  Thanks to @maxxx777 for this
+    Made DataGroup fields publicly readable (after review of PR 38 by @danydev)
+    Adds SHA384 support for calculating DataGroup Hashes - Thanks to @maxxx777 for PR 37
+
+V1.0.7
+    Change to allow direct access to the underlying DataGroups through read only property dataGroupsRead
+    Changed public properties on MFCPassportModel to read only (private set)
+    Renamed  readDataGroups to dataGroupsAvailable and changed from [String] to [DataGroupId]
+    Made getName() and getIDFromName() on DataGroupId public
+    Fixed some logging
+
+V1.0.6
+    Change so that SOD hashes are always extracted (if SOD is present)  and checked even if no master list set
+
+V1.0.5
+    Fixes for Active Authentication and encoding of Le in DO97 - thanks to @smlu for this.
+    Minor SwiftUI fixes for the example app
+    Better handling of wrong length (hopefully)
+    
+V1.0.4
+    So, turns out some passports can't send 255 bytes of data in one go, so if we get a wrong length error
+       then reduce the amount of data we are attempting to read
+
+V1.0.3
+    PassportReader now handles DG not found
+    Only tries to read DG's that are available
+    Now defaults to not even attempting to read DataGroups 3 & 4 (as Extended Access Control required and this 
+       isn't implemented (you can force the read if you want by setting skipSecureElements to false on the 
+       readPassport call.
+
+V1.0.2
+    Sample app now has an icon (passport image from FontAwesome)
+    Sample app date fields now includes date format in placeholder text
+    Previous fix for handling errors in DG elements didn't quite work if elements came in the wrong order
+       Hopefully this will - thanks to maxxx777 for his help with this
+    
+V1.0.1
+    Added OS_ACTIVITY_MODE = disabled to Example project scheme to hide internall CoreNFC Logging
+    Fixed bug where specific data groups were requested to be read but COM overrode this and caused everything to be read
+    Fixed bug where if DG3 element came last (which we can't read due to security), then the entire passport read failed
+
+V1.0.0
+    Considered stable enough to release properly
+
+V0.0.13
+    Updated README with new supported features
+    Removed tests folder as they have been moved into the Example Project
+    Removed old Passport model (NFCPassportModel replaces it)
+    Detail view now shows more information on verification status of passport
+    Datagroups 11, 12, and 15 now implemented (DG14 has stub but data not parsed yet)
+    Datagroup 15 only parses out an ECDSA public key (RSA still to be done)
+
+    Passive Authentication now properly verifies the SOD data is correctly signed by the Document Signing Certificate
+    Passive Authentication now checks all read data group hashes
+    
+    Now supports Active Authentication - ONLY for ECDSA certificates in DG15
+    
+    PassportReader now show progress when reading
+    Will re-try up-to 3 times to read passport fields (to reduce failed reads), and also attempts to re-establish BAC if we get an error whilst reading
+    
+    Added Tests back in to Example project
+
+V0.0.12
+    Removed old version of getSignedDataFromPKCS72
+
+    Changed getSignedDataFromPKCS7 to verifyAndGetSignedDataFromPKCS7
+    Updated above method to use CMS (PKCS7) for verifying the contents of the SOD rather than just dumping the contents
+    out (which previously was the case).  The PKCS7_Verify function used only supports PKCS7 V1.5 not the new formats (e.g. RSA-OAEP signed messages)
+    NOTE -if the contents can't be verified then an exception is now returned rather than just returning the non-verified signed data.
+    
+    Fixed a bug with display of Tampered data in the sample app
+    Fixed a feature where I was only reading out DG1 in the sample app
+
+V0.0.11
+    Major (breaking) changes (sorry)
+    Restructured a lot of functionalilty - see sample app
+    LDS and Unicode Version now correctly parsed
+    MRZ element correctly stored
+    Certificates extracted and stored
+    Updated NFCPassportModel to have properties that return data in more meaningful form
+       e.g. documentNumber, name, documentSigningCertificate, countrySigningCertificate (if found)
+    Moved PassiveAuthentication into NFCPassportModel and can be done automatically as passport is read
+    PassportReader now accepts an optional URL to masterlist (currenrly needs to be either included in app bundle or downloaded onto device)
+    If masterlist url is present, PassiveAuthentication is done as part of passport read.
+    Added new X509Wrapper class that wraps up an OpenSSL X509 certificate and can extract elements from it.
+
+V0.0.10
+    Added missing parameter
+    Removed passiveAuthentication from Example app
+    Fixed bug where model changes weren't correctly sent to SwiftUI
+    Bitcode disabled as doesn't compile properly without it!
+    Removed Package.swift
+    Merged in ChristianNorbertBraun's patch for Cocoapod support
+    Added JPEG2000CodestreamButmap header check when parsing DG2 (thanks to stack1overflow for finding and reporting this)
+
+V0.0.9
+    Added check for openssl supporting the cms command
+    Updated sample app to work with to iOS 13 Beta 8 and XCode 11 Beta 6
+
+V0.0.8
+    Updated with iOS 13 Beta 4 changes
+    Merge pull request #8 from haydarKarkin/master
+    Fix that getting MRZ type for ID cards
+    Removed included OpenSSL C code
+    Ported above C code over to Swift and reduced to only what was needed
+    Added .gitattributes files to make project as swift
+    Added additional troubleshooting information for when Mutual Authentication fails due to invalid MRZKey
+    Merge pull request #4 from WooD1k/bugfix/textfield-deprecated-placeholder-init
+        TextFields are using deprecated at iOS 13 beta 3 init
+    Merge pull request #3 from WooD1k/bugfix/content-view-visibility
+        The main screen of the app is not shown at iOS 13 beta 3
+        Use TextField's init without a placeholder property as it's deprecated at iOS 13 beta 3
+        Use UIWindow(windowScene:) instead of UIWindow(frame:) at SceneDelegate
+    Removed storyboard from Info.plist
+
+V0.0.7
+    Passport is now NFCPassportModel as the passportMRZ now actually returns just the MRZ data rather than all the elements.  There is now a passportDataElements which returns these properly.
+    Changed MRZ element key - to 5B rather than 5F5B  so it now correctly matches the spec!
+    Sample app is back in SwiftUI and fairly well updated (I had some time to properly dive in!)
+    Passive  Authentication is now done automatically when the passport is read.
+    Passive Authentication has been split up into the two seperate stages (each one can be done independently - so you can check of a passport is signed by a valid trusted certificate (from a master list), and then whether that data has been tampered with.
+    Moved some code around
+
+
+V0.0.6
+    PassiveAuthentication now throws errors with better details as to why validation failed rather than just returning true/false
+    Added script to create a masterList.pem file from either the ICAO PKD repositry masterlists (LDIF) or a country masterlist CMS file
+    Added docs for above script
+    Added test masterList.pem file which WONT validate anything
+    Updated app readme
+    Reverted back to plain UIKit because I'm not ready to focus on that yet!
+    Refactored PassportReader slightly - fixed some bugs and moved out Passport to its own model
+    You'll note its not using CocoaPods because I'm including OpenSSL!  I was going to use the Perfect-COpenSSL SPM Package but not too happy with that licence! Instead using Marcin Krzyżanowski's OpenSSL-Universal Pod - hopefully this will become a Swift Package at some point
+    Added Passive Authentication!  Its included as part of the Sample App for reasons.  Ideally this should be its own SPM/Pod but not got round to that yet!
+    It uses the Apps code from OpenSSL for the crypto stuff and as such is a bit (very) janky but it works
+    You need to manually add your own masterList.pem file which is a single file of all the unique PEMS in the master list - instructions will be coming soon!
+    Fixed Error handling - missed off error check when passport lost connection
+    Small cleanup of unused code
+
+V0.0.5
+    If an error was sent from the passport whilst reading, the Error now includes a readable reason for that error
+    Refactored main UI slightly
+    Added ability to lookup errors received from the passport - currently just prints to logs not returned yet
+    Moved Sample app UI over to SwiftUI
+
+V0.0.4
+    Implemented parsing for DG2, DG7 and COM data groups (inc tests)
+    Changed PassportReader to take in which data groups you wish to read and will read those
+    PassportReader now pulls data from parsed data groups
+    Added DataGroup2 Parsing and tests
+    Changed TagError - corrected case for NoConnectedTag and added two new errors
+    Renamed DataGroup to DataGroupId and DGMap to DataGroupToFileIdMap due to collision with new DataGroup parsing classes
+    Changed type of asn1Length to int rather than UInt64
+    Added DataGroupParsing - currently only DG1 parsed out
+    Added additional tests
+
+V0.0.3
+    Renamed log to Log
+    Added some initial tests
+    Removed bridging header - no longer required now
+
+V0.0.2
+    Updated Readme's
+
+V0.0.1
+    Fixed url to point to master for SPM
+    Refactored for Swift Package Manager
+    Refactored code slighty to make it simpler to use
+    PassportReader now does all the NFC stuff
+        Just need to call passportReader.readPassport(mrzKey:, completed:) to do the scan
+    Started preparations for packaging
+    Initial version - working
+       Supports Basic Access Control and SecureMessaging
+       Reads DG1 (MRZ) and DG2 (image) - in both JPEG and JPEG2000 formats

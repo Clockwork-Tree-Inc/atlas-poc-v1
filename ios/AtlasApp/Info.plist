@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Usage strings + capabilities for the Atlas PoC app target (§1.2, §6, §8). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- R10 BLE capture runs on the phone (§1.2). -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Atlas connects to your Colmi R10 ring to read live heart-rate and motion for the liveness gate. Raw data is encrypted on this device and never leaves it.</string>
+
+    <!-- Enrolment biometric anchors + direct-capture provenance (§6, §8). -->
+    <key>NSCameraUsageDescription</key>
+    <string>Atlas captures depth-checked, provenanced photos and your enrolment face/depth anchor. Capture happens inside the attested app flow.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Atlas uses Face ID to gate the Secure Enclave authority and the in-person enrolment ritual.</string>
+
+    <!-- Ambient PoC: the phone's mic + motion FUSE into a live TIMING/GATING signal
+         standing in for the ring. Sensor data times draws and gates the ratchet;
+         it is NEVER folded into a key (value = clean QRNG). -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Atlas fuses ambient sound level (loudness only, not recorded) into a live timing signal that schedules cryptographic draws. Audio is never stored and never enters a key. If you enable the spoken panic phrase, the microphone also listens on-device for that phrase to trigger a safety response.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>If you enable the spoken panic phrase, Atlas recognizes that phrase ON DEVICE (never sent to Apple or any server) so you can trigger a safety response hands-free. Recognition is off unless you turn it on.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Atlas fuses accelerometer, gyroscope, magnetometer and barometer motion into a live timing/gating signal. Motion data times draws and gates the ratchet; it never enters a key.</string>
+
+    <!-- Two-phone run: the app talks to the Mac blind-relay node over the LAN. -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Atlas connects to the Mac node on the local network for the two-phone run.</string>
+    <!-- The Mac node is plain http on the LAN; allow local (RFC1918/.local) HTTP only.
+         This does NOT disable ATS for arbitrary internet hosts. -->
+    <!-- BETA MESH: the node lives on a private Tailscale/WireGuard mesh (100.64/10 — NOT "local"
+         to ATS), reached over plain http INSIDE the encrypted mesh; app-layer PQC seals content
+         regardless. Arbitrary-loads is the beta allowance for that; tighten to TLS-only when the
+         node goes public behind Caddy. -->
+    <!-- HTTPS-only: the node is reached over TLS (your node behind Caddy/Let's Encrypt).
+         NSAllowsLocalNetworking stays for LAN dev-node use only; no arbitrary/insecure public loads. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+
+    <!-- Continuous operation channels (iOS grants real background runtime only through these;
+         MOVEMENT rides along on whichever is active — CMMotionManager streams live while the
+         process is kept awake, and the motion coprocessor logs activity/steps even when the app
+         is suspended, read back via CMMotionActivityManager/CMPedometer on next wake):
+         • bluetooth-central — the ring/wearable stream keeps presence ticking while pocketed
+           (lowest power; the primary always-on channel).
+         • audio — the ambient MIC sensing (loudness for presence/entropy) is a genuine audio-
+           recording activity, so this legitimately keeps sensing + duress evidence streaming
+           alive in the background (shows the orange mic indicator — honest, disclosed).
+         • location — continuous presence/context + duress location streaming. -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>bluetooth-central</string>
+        <string>audio</string>
+        <string>location</string>
+        <string>remote-notification</string>
+    </array>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Atlas uses location as a presence/context signal and, under a duress unlock, streams it as sealed evidence off your device. It is never sold or shared.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Atlas can keep presence alive and, under a duress unlock, stream sealed evidence while the app is backgrounded. It is never sold or shared.</string>
+
+    <!-- eID / ePassport NFC read (ICAO 9303): the phone reads the chip directly. -->
+    <key>NFCReaderUsageDescription</key>
+    <string>Atlas reads your passport/eID chip on this device to verify your Real-ID. The scan is local; document data never leaves your phone.</string>
+    <key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+    <array>
+        <string>A0000002471001</string>
+        <string>A0000002472001</string>
+        <string>00000000000000</string>
+    </array>
+
+    <key>UILaunchScreen</key>
+    <dict/>
+</dict>
+</plist>

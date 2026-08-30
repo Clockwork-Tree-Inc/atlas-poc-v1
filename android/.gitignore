@@ -1,0 +1,18 @@
+# Android / Gradle build artifacts
+.gradle/
+build/
+/app/build/
+local.properties
+captures/
+.cxx/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Keystores (never commit signing material)
+*.jks
+*.keystore
+
+# OS
+.DS_Store

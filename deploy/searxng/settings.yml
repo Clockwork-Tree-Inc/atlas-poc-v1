@@ -1,0 +1,7 @@
+use_default_settings: true
+server:
+  secret_key: "CHANGE-ME-openssl-rand-hex-16"
+search:
+  formats:
+    - html
+    - json

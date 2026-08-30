@@ -1,0 +1,5 @@
+<resources>
+    <!-- Base theme is a no-action-bar Material3 theme; Compose owns all styling at runtime
+         (see ui/theme/Theme.kt). This XML theme only covers the window before Compose draws. -->
+    <style name="Theme.Atlas" parent="android:Theme.Material.NoActionBar" />
+</resources>

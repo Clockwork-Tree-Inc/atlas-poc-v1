@@ -1,0 +1,16 @@
+# SearXNG — self-hosted open metasearch: the AI's live wider-web tool (no vendor surface).
+# Main node only. JSON API requires the mounted settings.yml (formats: html+json).
+#   sudo docker compose -f deploy/searxng-compose.yml up -d      → http://127.0.0.1:8888
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: atlas-searxng
+    ports:
+      # LOOPBACK ONLY. The Atlas node reaches searx over localhost; publishing on all interfaces
+      # would expose it publicly — and Docker's own iptables rules BYPASS the host firewall (ufw/
+      # nftables), so "the firewall blocks 8888" is false for a container-published port. Bind to
+      # 127.0.0.1 so it is unreachable off-host regardless of firewall state.
+      - "127.0.0.1:8888:8080"
+    volumes:
+      - ./searxng:/etc/searxng
+    restart: unless-stopped

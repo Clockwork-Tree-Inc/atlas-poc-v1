@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlas-poc"
+version = "0.1.0"
+description = "ATLAS — post-quantum, live-presence identity / trust / records substrate (proof of concept)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "Dr Aun Ali", email = "contact@clockwork-tree.com" }]
+# Runtime deps are the pure-Python default set (Ursa BBS+ stays optional). Kept in sync with
+# requirements.txt; a publicly-reachable node additionally installs liboqs-python (see
+# deploy/install-node.sh) for constant-time ML-KEM.
+dependencies = [
+    "cryptography>=44.0.1",
+    "kyber-py>=1.0",
+    "dilithium-py>=1.0",
+    "pyspx>=0.5.0",
+    "py-ecc",
+    "pyjwt>=2.8",
+    "httpx[http2]>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+# `pip install -e backend` then run these directly — the fastest way to SEE a real behaviour.
+atlas-demo-liveness = "demos.demo_liveness_break:run_demo"
+atlas-demo-records = "atlas.records.demo:run_demo"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["atlas*", "demos*"]

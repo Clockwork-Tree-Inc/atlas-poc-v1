@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Python backend / protocol core.
+  #
+  # Two legs (matrix), exercising both credential backends:
+  #   * pure-python : default install (requirements.txt is pure-Python / prebuilt
+  #                   wheels). Ursa absent -> _BBS_AVAILABLE=False -> the
+  #                   pure-Python Pointcheval-Sanders backend runs. THIS GATES CI.
+  #   * native-ursa : additionally installs ursa-bbs-signatures to cover the
+  #                   native BBS+ path (_BBS_AVAILABLE=True). Allowed to fail:
+  #                   Ursa was archived by Hyperledger in 2022 and frequently
+  #                   won't build, so it is informational only and never blocks.
+  # ---------------------------------------------------------------------------
+  backend-python:
+    name: Backend (Python, ${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.install_ursa }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: pure-python
+            install_ursa: false
+          - backend: native-ursa
+            install_ursa: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install declared (pure-Python) dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: (interop) install C2PA content-credential tooling
+        run: pip install "c2pa-python>=0.37" "pillow>=10.0"
+
+      - name: (native path) install Ursa BBS+ accelerator
+        if: ${{ matrix.install_ursa }}
+        run: pip install "ursa-bbs-signatures>=1.0"
+
+      - name: Report which credential backend is active
+        working-directory: backend
+        run: |
+          python -c "import atlas.realid.verification as v; print('_BBS_AVAILABLE =', v._BBS_AVAILABLE)"
+
+      - name: Run backend test suite
+        working-directory: backend
+        run: pytest
+
+  # ---------------------------------------------------------------------------
+  # Swift core + cross-language parity vectors. Must run on macOS: the core and
+  # the parity tests (the other half of the reference) can't run on Linux.
+  # ---------------------------------------------------------------------------
+  swift-core:
+    name: Swift core + parity (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift toolchain version
+        run: swift --version
+
+      # The repo currently tracks a stale .build tree; discard it so the tests
+      # build clean on the runner rather than reusing another machine's artifacts.
+      - name: Clean stale build artifacts
+        working-directory: ios/AtlasCore
+        run: rm -rf .build
+
+      - name: Run Swift tests
+        working-directory: ios/AtlasCore
+        run: swift test
